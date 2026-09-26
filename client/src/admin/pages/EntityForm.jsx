@@ -5,6 +5,7 @@ import { useEntityRecord } from '../hooks/useEntityRecord.js';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning.js';
 import FormField from '../components/fields/FormField.jsx';
 import { LoadingState, ErrorBanner } from '../components/StatusStates.jsx';
+import NotFound from '../../pages/NotFound.jsx';
 
 function emptyValuesFor(fields) {
   const values = {};
@@ -36,23 +37,26 @@ export default function EntityForm() {
   const { entity, id } = useParams();
   const config = entityConfigs[entity];
   const navigate = useNavigate();
-  const { isEditMode, initial, loading, loadError, save, saving, fieldErrors, saveError } = useEntityRecord(
-    config.endpoint,
-    id
-  );
 
-  const [values, setValues] = useState(() => emptyValuesFor(config.fields));
+  const { isEditMode, initial, loading, loadError, save, saving, fieldErrors, saveError } =
+    useEntityRecord(config?.endpoint, id);
+
+  const [values, setValues] = useState(() => (config ? emptyValuesFor(config.fields) : {}));
   const [clientErrors, setClientErrors] = useState({});
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    if (initial) {
+    if (config && initial) {
       setValues({ ...emptyValuesFor(config.fields), ...initial });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
   useUnsavedChangesWarning(dirty);
+
+  if (!config) {
+    return <NotFound />;
+  }
 
   function set(name, value) {
     setValues((v) => ({ ...v, [name]: value }));
@@ -65,8 +69,6 @@ export default function EntityForm() {
     setClientErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    // Empty-string optional fields -> null, so we don't send "" for
-    // things like dates/urls the backend expects as null when absent
     const payload = { ...values };
     for (const f of config.fields) {
       if (!f.required && payload[f.name] === '') payload[f.name] = null;

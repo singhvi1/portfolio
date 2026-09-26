@@ -16,7 +16,11 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { connectDB } from '../config/db.js';
 import Project from '../models/Project.js';
-import { projects as clientProjects, devPortfolio } from '../../../client/src/data/projects/index.js';
+import { logger } from '../utils/looger.js';
+import {
+  projects as clientProjects,
+  devPortfolio,
+} from '../../../client/src/data/projects/index.js';
 
 function toProjectDoc(p) {
   return {
@@ -48,19 +52,32 @@ async function seed() {
   const allSourceProjects = [...clientProjects, devPortfolio];
   const docs = allSourceProjects.map(toProjectDoc);
 
-  console.log(`[seed] Upserting ${docs.length} projects (by slug)...`);
+  logger.service('SEED', `Upserting ${docs.length} projects (by slug)...`);
 
   for (const doc of docs) {
-    await Project.findOneAndUpdate({ slug: doc.slug }, doc, { upsert: true, new: true, runValidators: true });
-    console.log(`  - ${doc.slug} ${doc.isPlaceholder ? '(placeholder)' : ''}`);
+    await Project.findOneAndUpdate(
+      { slug: doc.slug },
+      doc,
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    logger.service(
+      'SEED',
+      `Upserted ${doc.slug}${doc.isPlaceholder ? ' (placeholder)' : ''}`
+    );
   }
 
-  console.log('[seed] Done.');
+  logger.service('SEED', 'Done.');
+
   await mongoose.connection.close();
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error('[seed] Failed:', err);
+  logger.error(`Seed failed: ${err.message}`);
   process.exit(1);
 });

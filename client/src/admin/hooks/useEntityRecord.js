@@ -15,7 +15,7 @@ export function useEntityRecord(endpoint, id) {
   const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
-    if (!isEditMode) return;
+    if (!isEditMode || !endpoint) return;
     let cancelled = false;
     setLoading(true);
     api

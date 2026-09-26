@@ -8,16 +8,23 @@ import Pagination from '../components/Pagination.jsx';
 import SearchInput from '../components/SearchInput.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { ErrorBanner, SuccessBanner } from '../components/StatusStates.jsx';
+import NotFound from '../../pages/NotFound.jsx';
 
 export default function EntityList() {
   const { entity } = useParams();
   const config = entityConfigs[entity];
 
-  const { items, pagination, page, setPage, search, setSearch, loading, error, reload } = useEntityList(config.endpoint);
+  const { items, pagination, page, setPage, search, setSearch, loading, error, reload } =
+    useEntityList(config?.endpoint);
+
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  if (!config) {
+    return <NotFound />;
+  }
 
   async function confirmDelete() {
     setDeleting(true);

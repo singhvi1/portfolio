@@ -10,6 +10,10 @@ export function useEntityList(endpoint, { limit = 20 } = {}) {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    if (!endpoint) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

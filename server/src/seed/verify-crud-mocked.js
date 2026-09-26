@@ -14,14 +14,25 @@ import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 import Article from '../models/Article.js';
 import { createApp } from '../app.js';
+import { logger } from '../utils/looger.js';
 
 function makeInMemoryModel(Model, seed = [], defaults = {}) {
-  let store = seed.map((doc) => ({ ...doc, _id: new mongoose.Types.ObjectId().toString() }));
+  let store = seed.map((doc) => ({
+    ...doc,
+    _id: new mongoose.Types.ObjectId().toString(),
+  }));
 
   Model.find = (query = {}) => {
     let results = store;
-    if (query.status) results = results.filter((d) => d.status === query.status);
-    if (query.featured !== undefined) results = results.filter((d) => d.featured === query.featured);
+
+    if (query.status) {
+      results = results.filter((d) => d.status === query.status);
+    }
+
+    if (query.featured !== undefined) {
+      results = results.filter((d) => d.featured === query.featured);
+    }
+
     const chain = {
       sort: () => chain,
       skip: () => chain,
@@ -32,36 +43,68 @@ function makeInMemoryModel(Model, seed = [], defaults = {}) {
       exec: async () => results,
       [Symbol.iterator]: () => results[Symbol.iterator](),
     };
-    // Make it awaitable and array-like enough for controllers that do `await Model.find(...)`
+
+    // Make it awaitable and array-like enough for controllers that do
+    // `await Model.find(...)`.
     return Object.assign(Promise.resolve(results), chain);
   };
+
   Model.countDocuments = async (query = {}) => {
     let results = store;
-    if (query.status) results = results.filter((d) => d.status === query.status);
+
+    if (query.status) {
+      results = results.filter((d) => d.status === query.status);
+    }
+
     return results.length;
   };
-  Model.findById = async (id) => store.find((d) => d._id === id) || null;
+
+  Model.findById = async (id) =>
+    store.find((d) => d._id === id) || null;
+
   Model.findOne = async (query) => {
     const key = Object.keys(query)[0];
     return store.find((d) => d[key] === query[key]) || null;
   };
+
   Model.create = async (data) => {
     // Mirrors Mongoose applying schema defaults (e.g. Article.status: 'draft')
     // since this in-memory store bypasses the real schema entirely.
-    const doc = { ...defaults, ...data, _id: new mongoose.Types.ObjectId().toString(), createdAt: new Date().toISOString() };
+    const doc = {
+      ...defaults,
+      ...data,
+      _id: new mongoose.Types.ObjectId().toString(),
+      createdAt: new Date().toISOString(),
+    };
+
     store.push(doc);
     return doc;
   };
+
   Model.findByIdAndUpdate = async (id, update) => {
     const idx = store.findIndex((d) => d._id === id);
-    if (idx === -1) return null;
-    store[idx] = { ...store[idx], ...update };
+
+    if (idx === -1) {
+      return null;
+    }
+
+    store[idx] = {
+      ...store[idx],
+      ...update,
+    };
+
     return store[idx];
   };
+
   Model.findByIdAndDelete = async (id) => {
     const idx = store.findIndex((d) => d._id === id);
-    if (idx === -1) return null;
+
+    if (idx === -1) {
+      return null;
+    }
+
     const [removed] = store.splice(idx, 1);
+
     return removed;
   };
 
@@ -71,23 +114,28 @@ function makeInMemoryModel(Model, seed = [], defaults = {}) {
 }
 
 const app = createApp();
+
 let passed = 0;
 let failed = 0;
+
 function check(name, condition) {
   if (condition) {
-    console.log(`  ✓ ${name}`);
+    logger.service('VERIFY', `✓ ${name}`);
     passed++;
   } else {
-    console.log(`  ✗ ${name}`);
+    logger.error(`VERIFY ✗ ${name}`);
     failed++;
   }
 }
 
 async function getAdminToken() {
-  const res = await request(app).post('/api/auth/login').send({
-    email: process.env.ADMIN_EMAIL,
-    password: 'test-password-123',
-  });
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({
+      email: process.env.ADMIN_EMAIL,
+      password: 'test-password-123',
+    });
+
   return res.body.data.token;
 }
 
@@ -95,72 +143,186 @@ async function run() {
   const token = await getAdminToken();
   const auth = { Authorization: `Bearer ${token}` };
 
-  console.log('\n[verify-crud] Project CRUD (mocked model, no real MongoDB)');
+  logger.service(
+    'VERIFY',
+    'Project CRUD (mocked model, no real MongoDB)'
+  );
+
   makeInMemoryModel(Project);
+
   {
     const create = await request(app)
       .post('/api/projects')
       .set(auth)
-      .send({ slug: 'mock-project', name: 'Mock Project', shortDescription: 'A test project for CRUD verification' });
-    check('POST /api/projects creates and returns the project', create.status === 201 && create.body.data.name === 'Mock Project');
+      .send({
+        slug: 'mock-project',
+        name: 'Mock Project',
+        shortDescription: 'A test project for CRUD verification',
+      });
+
+    check(
+      'POST /api/projects creates and returns the project',
+      create.status === 201 &&
+        create.body.data.name === 'Mock Project'
+    );
+
     const id = create.body.data._id;
 
     const list = await request(app).get('/api/projects');
-    check('GET /api/projects lists it', list.status === 200 && list.body.data.items.some((p) => p._id === id));
+
+    check(
+      'GET /api/projects lists it',
+      list.status === 200 &&
+        list.body.data.items.some((p) => p._id === id)
+    );
 
     const getOne = await request(app).get(`/api/projects/${id}`);
-    check('GET /api/projects/:id returns it', getOne.status === 200 && getOne.body.data.name === 'Mock Project');
 
-    const getBySlug = await request(app).get('/api/projects/slug/mock-project');
-    check('GET /api/projects/slug/:slug returns it', getBySlug.status === 200 && getBySlug.body.data.slug === 'mock-project');
+    check(
+      'GET /api/projects/:id returns it',
+      getOne.status === 200 &&
+        getOne.body.data.name === 'Mock Project'
+    );
 
-    const getBySlugMissing = await request(app).get('/api/projects/slug/does-not-exist');
-    check('GET /api/projects/slug/:slug for unknown slug -> 404', getBySlugMissing.status === 404);
+    const getBySlug = await request(app).get(
+      '/api/projects/slug/mock-project'
+    );
 
-    const update = await request(app).put(`/api/projects/${id}`).set(auth).send({ name: 'Mock Project (edited)' });
-    check('PUT /api/projects/:id updates it', update.status === 200 && update.body.data.name === 'Mock Project (edited)');
+    check(
+      'GET /api/projects/slug/:slug returns it',
+      getBySlug.status === 200 &&
+        getBySlug.body.data.slug === 'mock-project'
+    );
 
-    const del = await request(app).delete(`/api/projects/${id}`).set(auth);
-    check('DELETE /api/projects/:id removes it', del.status === 200);
+    const getBySlugMissing = await request(app).get(
+      '/api/projects/slug/does-not-exist'
+    );
 
-    const getAfterDelete = await request(app).get(`/api/projects/${id}`);
-    check('GET after delete -> 404', getAfterDelete.status === 404);
+    check(
+      'GET /api/projects/slug/:slug for unknown slug -> 404',
+      getBySlugMissing.status === 404
+    );
+
+    const update = await request(app)
+      .put(`/api/projects/${id}`)
+      .set(auth)
+      .send({
+        name: 'Mock Project (edited)',
+      });
+
+    check(
+      'PUT /api/projects/:id updates it',
+      update.status === 200 &&
+        update.body.data.name === 'Mock Project (edited)'
+    );
+
+    const del = await request(app)
+      .delete(`/api/projects/${id}`)
+      .set(auth);
+
+    check(
+      'DELETE /api/projects/:id removes it',
+      del.status === 200
+    );
+
+    const getAfterDelete = await request(app).get(
+      `/api/projects/${id}`
+    );
+
+    check(
+      'GET after delete -> 404',
+      getAfterDelete.status === 404
+    );
   }
 
-  console.log('\n[verify-crud] Article draft/publish behavior (mocked model)');
-  makeInMemoryModel(Article, [], { status: 'draft' });
+  logger.service(
+    'VERIFY',
+    'Article draft/publish behavior (mocked model)'
+  );
+
+  makeInMemoryModel(Article, [], {
+    status: 'draft',
+  });
+
   {
     const create = await request(app)
       .post('/api/articles')
       .set(auth)
-      .send({ title: 'Mock Article', slug: 'mock-article', shortDescription: 'desc', content: 'body text' });
-    check('New article defaults to draft', create.status === 201 && create.body.data.status === 'draft');
-    const id = create.body.data._id;
+      .send({
+        title: 'Mock Article',
+        slug: 'mock-article',
+        shortDescription: 'desc',
+        content: 'body text',
+      });
 
-    const publicListBeforePublish = await request(app).get('/api/articles');
     check(
-      'Public list does NOT include the unpublished draft',
-      publicListBeforePublish.status === 200 && !publicListBeforePublish.body.data.items.some((a) => a._id === id)
+      'New article defaults to draft',
+      create.status === 201 &&
+        create.body.data.status === 'draft'
     );
 
-    const adminList = await request(app).get('/api/articles/admin/all').set(auth);
-    check('Admin list DOES include the draft', adminList.status === 200 && adminList.body.data.some((a) => a._id === id));
+    const id = create.body.data._id;
 
-    const publish = await request(app).patch(`/api/articles/${id}/status`).set(auth).send({ status: 'published' });
-    check('PATCH .../status publishes it and stamps publishedDate', publish.status === 200 && publish.body.data.status === 'published' && !!publish.body.data.publishedDate);
+    const publicListBeforePublish = await request(app).get(
+      '/api/articles'
+    );
 
-    const publicListAfterPublish = await request(app).get('/api/articles');
+    check(
+      'Public list does NOT include the unpublished draft',
+      publicListBeforePublish.status === 200 &&
+        !publicListBeforePublish.body.data.items.some(
+          (a) => a._id === id
+        )
+    );
+
+    const adminList = await request(app)
+      .get('/api/articles/admin/all')
+      .set(auth);
+
+    check(
+      'Admin list DOES include the draft',
+      adminList.status === 200 &&
+        adminList.body.data.some((a) => a._id === id)
+    );
+
+    const publish = await request(app)
+      .patch(`/api/articles/${id}/status`)
+      .set(auth)
+      .send({
+        status: 'published',
+      });
+
+    check(
+      'PATCH .../status publishes it and stamps publishedDate',
+      publish.status === 200 &&
+        publish.body.data.status === 'published' &&
+        !!publish.body.data.publishedDate
+    );
+
+    const publicListAfterPublish = await request(app).get(
+      '/api/articles'
+    );
+
     check(
       'Public list DOES include it once published',
-      publicListAfterPublish.status === 200 && publicListAfterPublish.body.data.items.some((a) => a._id === id)
+      publicListAfterPublish.status === 200 &&
+        publicListAfterPublish.body.data.items.some(
+          (a) => a._id === id
+        )
     );
   }
 
-  console.log(`\n[verify-crud] ${passed} passed, ${failed} failed\n`);
-  if (failed > 0) process.exit(1);
+  logger.service(
+    'VERIFY',
+    `${passed} passed, ${failed} failed`
+  );
+
+  if (failed > 0) {
+    process.exit(1);
+  }
 }
 
 run().catch((err) => {
-  console.error('[verify-crud] Crashed:', err);
+  logger.error(`VERIFY crashed: ${err.message}`);
   process.exit(1);
 });

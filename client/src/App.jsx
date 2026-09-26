@@ -4,7 +4,7 @@ import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import ProtectedRoute from './admin/components/ProtectedRoute.jsx'
 import AdminLayout from './admin/components/AdminLayout.jsx'
-
+const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 // Route-based code splitting: each page ships as its own chunk,
 // only loaded when the user actually navigates there.
 const Home = lazy(() => import('./pages/Home.jsx'))
@@ -121,10 +121,17 @@ export default function App() {
                     <Route path=":entity" element={<EntityList />} />
                     <Route path=":entity/new" element={<EntityForm />} />
                     <Route path=":entity/:id" element={<EntityForm />} />
+                    {/* Admin fallback */}
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </AdminLayout>
             </ProtectedRoute>
+          }
+        />
+        {/* Public fallback — LAST */}
+        <Route path="*"
+          element={<PublicLayout><NotFound /></PublicLayout>
           }
         />
       </Routes>
