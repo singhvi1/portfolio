@@ -1,0 +1,16 @@
+{
+  "name": "portfolio-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server exposing the portfolio's admin API as tools, so an AI assistant can help fill in monthly journey entries, projects, and everything else.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
+  }
+}

@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ink text-text-primary font-body antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+  a {
+    @apply transition-colors;
+  }
+  :focus-visible {
+    outline: 2px solid #7C9EFF;
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Signature element: the commit-log spine used on the monthly log page */
+  .commit-line {
+    position: relative;
+  }
+  .commit-line::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #262B36, transparent);
+  }
+  .commit-dot {
+    @apply w-4 h-4 rounded-full bg-ink border-2 border-accent relative z-10 flex-shrink-0;
+  }
+}
