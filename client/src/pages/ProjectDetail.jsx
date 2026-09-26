@@ -87,7 +87,7 @@ export default function ProjectDetail() {
       meta.setAttribute('content', project.shortDescription || '')
     }
     return () => {
-      document.title = 'Your Name — Software Engineer'
+      document.title = 'Vikash Kumar — Software Engineer'
     }
   }, [project])
 

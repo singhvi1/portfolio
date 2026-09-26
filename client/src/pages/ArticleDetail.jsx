@@ -23,7 +23,7 @@ export default function ArticleDetail() {
       meta.setAttribute('content', article.shortDescription || '')
     }
     return () => {
-      document.title = 'Your Name — Software Engineer'
+      document.title = 'Vikash Kumar — Software Engineer'
     }
   }, [article])
 

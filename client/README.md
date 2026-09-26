@@ -28,7 +28,7 @@ npm run preview   # sanity-check the production build locally
 
 ## Personalize it
 
-- `src/data/profile.js` — your name, bio, links, resume path
+- `src/data/profile.js` — Vikash Kumar, bio, links, resume path
 - `src/data/skills.js` — your skill groups and levels
 - `src/data/projects.js` — your projects (shown on Home + /projects)
 - Put your resume PDF in `public/resume.pdf`
